@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import DarkModeToggle from '../components/DarkModeToggle';
+import '../App.css';
 
 const HomePage = () => (
   <div>

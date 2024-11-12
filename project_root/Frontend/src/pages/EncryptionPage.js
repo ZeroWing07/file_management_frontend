@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import DarkModeToggle from '../components/DarkModeToggle';
+import '../App.css';
 
 const EncryptionPage = () => {
   const [file, setFile] = useState(null);

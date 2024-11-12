@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import CanvasComponent from '../components/CanvasComponent';
 import DarkModeToggle from '../components/DarkModeToggle';
+import '../App.css';
 
 const DecryptorPage = () => {
   const [password, setPassword] = useState('');
