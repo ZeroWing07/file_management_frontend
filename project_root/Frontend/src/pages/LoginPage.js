@@ -1,63 +1,55 @@
-// import React, { useState } from 'react';
-// import DarkModeToggle from '../components/DarkModeToggle';
-// import '../App.css';
-// import BackButton from '../components/BackButton';
-
-// const LoginPage = () => {
-//   const [formData, setFormData] = useState({ name: '', password: '' });
-
-//   const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
-
-//   const handleLogin = () => {
-//     // Handle login logic
-//   };
-
-//   return (
-//     <div className="form-container">
-//       <BackButton />
-//       <DarkModeToggle />
-//       <h2>Log In</h2>
-//       <input className="form-input" name="name" placeholder="Name" onChange={handleChange} />
-//       <input className="form-input" name="password" placeholder="Password" type="password" onChange={handleChange} />
-//       <button className="form-button" onClick={handleLogin}>Log In</button>
-//     </div>
-//   );
-// };
-
-// export default LoginPage;
-
 // pages/LoginPage.js
 import React, { useState } from 'react';
-import { useAuth } from '../components/AuthContext';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import BackButton from '../components/BackButton';
 
-const LoginPage = () => {
-  const { login } = useAuth();
-  const [formData, setFormData] = useState({ username: '', password: '' });
+function LoginPage() {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
 
-  const handleLogin = async () => {
-      const response = await fetch("http://127.0.0.1:8000/login/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    try {
+      const response = await axios.post('http://localhost:8000/login', {
+        username,
+        password,
       });
-      const data = await response.json();
-      if (data.access_token) {
-          login(data.access_token);  // Store token using AuthContext
-          alert("Logged in successfully");
-      } else {
-          alert("Login failed");
-      }
+      localStorage.setItem('token', response.data.token); // Store JWT token
+      alert("Login successful!");
+      navigate('/dashboard'); // Navigate to the dashboard or home
+    } catch (error) {
+      console.error(error);
+      alert("Login failed. Check credentials.");
+    }
   };
 
   return (
-      <div>
-          <h2>Log In</h2>
-          <input name="username" placeholder="Username" onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
-          <input name="password" placeholder="Password" type="password" onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
-          <button onClick={handleLogin}>Log In</button>
-      </div>
+    <div className="form-container">
+      <BackButton />
+      <h2>Login</h2>
+      <form onSubmit={handleLogin}>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button type="submit">Log In</button>
+        <button type="button" onClick={() => navigate('/forgot-password')}>Forgot Password?</button>
+      </form>
+    </div>
   );
-};
+}
 
 export default LoginPage;
-
