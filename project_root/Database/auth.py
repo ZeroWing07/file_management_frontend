@@ -1,7 +1,7 @@
 from pymongo import MongoClient
 from passlib.context import CryptContext
 
-MONGO_URI = "mongodb+srv://encoded_csrichaitanya2003:encoded_Arceus007@@clustermfa.h4u5v.mongodb.net/?retryWrites=true&w=majority&appName=ClusterMFA"
+MONGO_URI="mongodb+srv://csrichaitanya2003:Arceus007@clustermfa.h4u5v.mongodb.net/MFAFileStorage?retryWrites=true&w=majority&appName=ClusterMFA"
 client = MongoClient(MONGO_URI)
 db = client["MFAFileStorage"]
 users_collection = db["Users"]
