@@ -75,7 +75,7 @@ async def signup(request: Request):  # Use Request to manually access the reques
         user = await request.json()
 
         # Log the incoming user data for debugging
-        logger.info(f"Received signup request with data: {user}")
+        # logger.info(f"Received signup request with data: {user}")
 
         # Access variables manually from the parsed JSON
         username = user.get("username")
@@ -112,13 +112,40 @@ async def signup(request: Request):  # Use Request to manually access the reques
         logger.error(f"Error processing signup: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
+# @app.post("/token")
+# async def login(form_data: Request):
+#     logger.info(form_data.password)
+#     user = users_collection.find_one({"username": form_data.username})
+#     if not user or not verify_password(form_data.password, user['password']):
+#         raise HTTPException(status_code=400, detail="Invalid credentials")
+#     access_token = create_access_token(data={"sub": user["username"]}, expires_delta=timedelta(minutes=30))
+#     return {"access_token": access_token, "token_type": "bearer"}
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+    
 @app.post("/token")
-async def login(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login(form_data: LoginRequest):  # Use Pydantic model to parse the JSON body
+    logger.info(f"Login attempt for user: {form_data.username}")
+
+    # Fetch the user from the database
     user = users_collection.find_one({"username": form_data.username})
+    
     if not user or not verify_password(form_data.password, user['password']):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
-    access_token = create_access_token(data={"sub": user["username"]}, expires_delta=timedelta(minutes=30))
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid credentials"
+        )
+    
+    # Create a JWT token
+    access_token_expires = timedelta(minutes=30)  # Token expires in 30 minutes
+    access_token = create_access_token(
+        data={"sub": user["username"]}, expires_delta=access_token_expires
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
+
 
 @app.get("/users/me")
 async def read_users_me(token: str = Depends(oauth2_scheme)):

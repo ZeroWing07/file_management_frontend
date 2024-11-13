@@ -13,11 +13,11 @@ function LoginPage() {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:8000/login', {
+      const response = await axios.post('http://localhost:8000/token', {
         username,
         password,
       });
-      localStorage.setItem('token', response.data.token); // Store JWT token
+      localStorage.setItem('token', response.data.access_token); // Store JWT token
       alert("Login successful!");
       navigate('/dashboard'); // Navigate to the dashboard or home
     } catch (error) {
