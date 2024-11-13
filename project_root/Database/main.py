@@ -8,16 +8,35 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 import os
 from datetime import datetime, timedelta
+from fastapi import FastAPI
+
+app = FastAPI()
+
+from typing import Optional
+class User(BaseModel):
+    username: str
+    password: str
+    age: Optional[int] = None
+    signature: Optional[str] = None
 
 # Load environment variables
 load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI", "mongodb+srv://csrichaitanya2003:Arceus007@clustermfa.h4u5v.mongodb.net/MFAFileStorage?retryWrites=true&w=majority&appName=ClusterMFA")
 JWT_SECRET = os.getenv("JWT_SECRET", "your_jwt_secret")
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Adjust to match frontend origin
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 # MongoDB setup
 client = MongoClient(MONGO_URI)
-db = client['mydatabase']
-users_collection = db['users']
+db = client['MFAFileStorage']
+users_collection = db['Users']
 
 # FastAPI and Security setup
 app = FastAPI()
@@ -48,7 +67,12 @@ def get_password_hash(password):
 async def signup(user: User):
     if users_collection.find_one({"username": user.username}):
         raise HTTPException(status_code=400, detail="Username already registered")
-    user_data = {"username": user.username, "password": get_password_hash(user.password)}
+    user_data = {
+        "username": user.username,
+        "password": get_password_hash(user.password),
+        "age": user.age,
+        "signature": user.signature
+    }
     users_collection.insert_one(user_data)
     return {"message": "User created successfully"}
 

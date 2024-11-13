@@ -12,22 +12,21 @@ const SignupPage = () => {
   const canvasRef = useRef(null);
 
   const handleSignup = async () => {
-    if (canvasRef.current) {  // Check if canvasRef.current is defined
+    if (canvasRef.current) {
       const signatureDataUrl = canvasRef.current.toDataURL();
-
+  
       // Prepare form data, including the signature image
       const userData = {
         name,
         age,
         password,
-        signature: signatureDataUrl,  // Include the signature image data as a URL
+        signature: signatureDataUrl,
       };
-
+  
       try {
         const response = await axios.post('http://localhost:8000/signup', userData);
         if (response.status === 200) {
           alert('Signup successful!');
-          // Redirect to login or another page if needed
         }
       } catch (error) {
         console.error('Signup failed', error);

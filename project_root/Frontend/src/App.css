@@ -1,83 +1,152 @@
-/* General Reset */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Arial, sans-serif;
-}
+/* App.css */
 
-/* Layout */
-.form-container {
+/* General styling */
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: Arial, sans-serif;
+  margin: 0;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  min-height: 100vh;
-  background-color: #f0f2f5;
+  height: 100vh;
 }
 
-.form-box {
-  background-color: #fff;
-  padding: 2rem;
-  border-radius: 8px;
-  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
-  max-width: 400px;
-  width: 100%;
-}
-
-.form-box h2 {
-  color: #333;
-  margin-bottom: 1.5rem;
+h1, h2, h3 {
+  color: #ffffff;
   text-align: center;
 }
 
-/* Input Styling */
-.form-input {
+a {
+  color: #90caf9;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #64b5f6;
+}
+
+/* Centering form containers */
+.form-container, .signup-container {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 20px;
   width: 100%;
-  padding: 0.75rem;
-  margin-bottom: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
+  max-width: 400px;
+  margin: 20px auto;
 }
 
-.form-button {
+input[type="text"], input[type="number"], input[type="password"] {
+  background-color: #333;
+  border: none;
+  border-radius: 5px;
+  color: #e0e0e0;
+  font-size: 16px;
+  margin: 10px 0;
+  padding: 10px;
   width: 100%;
-  padding: 0.75rem;
-  background-color: #4a90e2;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="password"]::placeholder {
+  color: #888;
+}
+
+/* Button styling */
+button {
+  background-color: #2196f3;
   border: none;
-  border-radius: 4px;
-  color: white;
-  font-size: 1rem;
+  border-radius: 5px;
+  color: #fff;
   cursor: pointer;
-  transition: background-color 0.3s;
+  font-size: 16px;
+  margin: 10px 0;
+  padding: 10px;
+  width: 100%;
+  transition: background-color 0.3s ease;
 }
 
-.form-button:hover {
-  background-color: #357abd;
+button:hover {
+  background-color: #1e88e5;
 }
 
-/* Canvas Styling */
-canvas {
-  border: 1px solid #ddd;
-  margin-bottom: 1rem;
+button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
 }
 
-.back-button {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background-color: transparent;
+.forgot-password-button {
+  background: none;
   border: none;
-  color: #4a90e2;
-  font-size: 1.25rem;
+  color: #90caf9;
   cursor: pointer;
+  font-size: 14px;
+  margin-top: 5px;
+  padding: 0;
 }
 
-/* Dark mode toggle */
-.toggle-container {
-  display: flex;
-  justify-content: center;
+.forgot-password-button:hover {
+  color: #64b5f6;
+}
+
+/* DarkModeToggle Component */
+.dark-mode-toggle {
+  text-align: center;
   margin-top: 20px;
+}
+
+/* Specific component styling */
+.signup-container {
+  text-align: center;
+}
+
+canvas {
+  border: 1px solid #888;
+  background-color: #2b2b2b;
+  width: 200px; /* Make the canvas square */
+  height: 200px;
+}
+
+/* Spacing adjustments */
+input,
+button {
+  margin-bottom: 15px;
+}
+
+/* HomePage styling */
+.homepage {
+  text-align: center;
+  padding: 20px;
+}
+
+.homepage h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
+/* Signup and Login Button Styles */
+.homepage a {
+  display: inline-block;
+  margin: 15px;
+  padding: 15px 25px;
+  font-size: 1rem;
+  color: #fff;
+  background-color: #3f51b5;
+  border-radius: 5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.homepage a:hover {
+  background-color: #303f9f;
+  transform: translateY(-3px);
+}
+
+.homepage a:active {
+  transform: translateY(1px);
 }

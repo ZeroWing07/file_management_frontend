@@ -1,6 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, forwardRef, useImperativeHandle } from 'react';
 
-const CanvasComponent = ({ width, height }) => {
+const CanvasComponent = forwardRef(({ width, height }, ref) => {
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
@@ -29,6 +29,11 @@ const CanvasComponent = ({ width, height }) => {
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
   };
 
+  // Expose the canvas data URL method to parent component via ref
+  useImperativeHandle(ref, () => ({
+    toDataURL: () => canvasRef.current.toDataURL(),
+  }));
+
   return (
     <div>
       <canvas
@@ -44,6 +49,6 @@ const CanvasComponent = ({ width, height }) => {
       <button onClick={clearCanvas}>Clear Canvas</button>
     </div>
   );
-};
+});
 
 export default CanvasComponent;
