@@ -28,10 +28,10 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Adjust to match frontend origin
+    allow_origins=["http://localhost:3000"],  # Ensure this matches the frontend URL
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # Allow all methods (POST, GET, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 # MongoDB setup
 client = MongoClient(MONGO_URI)

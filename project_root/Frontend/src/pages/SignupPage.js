@@ -24,7 +24,7 @@ const SignupPage = () => {
       };
   
       try {
-        const response = await axios.post('http://localhost:8000/signup', userData);
+        const response = await axios.post('http://localhost:8000/signup', userData);  // POST request
         if (response.status === 200) {
           alert('Signup successful!');
         }
