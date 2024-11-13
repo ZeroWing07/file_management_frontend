@@ -10,7 +10,7 @@ import os
 from datetime import datetime, timedelta
 from fastapi import FastAPI
 
-app = FastAPI()
+app = FastAPI(max_request_size=10*1024*1024)
 
 from typing import Optional
 class User(BaseModel):
