@@ -1,5 +1,3 @@
-/* App.css */
-
 /* General styling */
 body {
   background-color: #121212;
@@ -26,7 +24,7 @@ a:hover {
   color: #64b5f6;
 }
 
-/* Centering form containers */
+/* Form container styling */
 .form-container, .signup-container {
   background-color: #1e1e1e;
   border-radius: 8px;
@@ -91,23 +89,9 @@ button:disabled {
   color: #64b5f6;
 }
 
-/* DarkModeToggle Component */
-.dark-mode-toggle {
-  text-align: center;
-  margin-top: 20px;
-}
-
-/* Specific component styling */
-.signup-container {
-  text-align: center;
-}
-
+/* Canvas styling */
 canvas {
-  position: relative; /* Ensures it stays in line with mouse coordinates */
-  padding: 0;
-  margin: 0;
   border: 1px solid #888;
-  background-color: #2b2b2b;
 }
 
 /* Spacing adjustments */
@@ -116,7 +100,62 @@ button {
   margin-bottom: 15px;
 }
 
-/* HomePage styling */
+/* Dashboard styling */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.dashboard-container h1 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #ffffff;
+}
+
+/* Dashboard and other boxes */
+.dashboard-box, .box {
+  width: 250px;
+  padding: 20px;
+  margin: 15px;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.dashboard-box:hover, .box:hover {
+  background-color: #303f9f;
+  transform: translateY(-3px);
+}
+
+.dashboard-box h2, .box h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* Logout button */
+.logout-button {
+  background-color: #d32f2f;
+  border: none;
+  border-radius: 5px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 10px 20px;
+  margin-top: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Homepage styling */
 .homepage {
   text-align: center;
   padding: 20px;
@@ -128,7 +167,201 @@ button {
   color: #ffffff;
 }
 
-/* Signup and Login Button Styles */
+.homepage a {
+  display: inline-block;
+  margin: 15px;
+  padding: 15px 25px;
+  font-size: 1rem;
+  color: #fff;
+  background-color: #3f51b5;
+  border-radius: 5px;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.homepage a:hover {
+  background-color: #303f9f;
+  transform: translateY(-3px);
+}
+
+.homepage a:active {
+  transform: translateY(1px);
+}
+/* General styling */
+body {
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: Arial, sans-serif;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+}
+
+h1, h2, h3 {
+  color: #ffffff;
+  text-align: center;
+}
+
+a {
+  color: #90caf9;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #64b5f6;
+}
+
+/* Form container styling */
+.form-container, .signup-container {
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  width: 100%;
+  max-width: 400px;
+  margin: 20px auto;
+}
+
+input[type="text"], input[type="number"], input[type="password"] {
+  background-color: #333;
+  border: none;
+  border-radius: 5px;
+  color: #e0e0e0;
+  font-size: 16px;
+  margin: 10px 0;
+  padding: 10px;
+  width: 100%;
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+input[type="password"]::placeholder {
+  color: #888;
+}
+
+/* Button styling */
+/* General button styling for consistency */
+button, .form-button, .encrypt-button, .view-files-button {
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 10px 20px;
+  margin: 10px 0;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Hover effect for all buttons */
+button:hover, .form-button:hover, .encrypt-button:hover, .view-files-button:hover {
+  background-color: #303f9f;
+  transform: translateY(-3px);
+}
+
+
+button:disabled {
+  background-color: #666;
+  cursor: not-allowed;
+}
+
+.forgot-password-button {
+  background: none;
+  border: none;
+  color: #90caf9;
+  cursor: pointer;
+  font-size: 14px;
+  margin-top: 5px;
+  padding: 0;
+}
+
+.forgot-password-button:hover {
+  color: #64b5f6;
+}
+
+/* Canvas styling */
+canvas {
+  border: 1px solid #888;
+}
+
+/* Spacing adjustments */
+input,
+button {
+  margin-bottom: 15px;
+}
+
+/* Dashboard styling */
+.dashboard-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  text-align: center;
+}
+
+.dashboard-container h1 {
+  font-size: 2rem;
+  margin-bottom: 30px;
+  color: #ffffff;
+}
+
+/* Dashboard and other boxes */
+.dashboard-box, .box {
+  width: 250px;
+  padding: 20px;
+  margin: 15px;
+  background-color: #1e1e1e;
+  color: #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.3s ease;
+}
+
+.dashboard-box:hover, .box:hover {
+  background-color: #303f9f;
+  transform: translateY(-3px);
+}
+
+.dashboard-box h2, .box h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* Logout button */
+.logout-button {
+  background-color: #d32f2f;
+  border: none;
+  border-radius: 5px;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 1rem;
+  padding: 10px 20px;
+  margin-top: 20px;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Homepage styling */
+.homepage {
+  text-align: center;
+  padding: 20px;
+}
+
+.homepage h1 {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #ffffff;
+}
+
 .homepage a {
   display: inline-block;
   margin: 15px;

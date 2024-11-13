@@ -1,7 +1,8 @@
 # main.py
 import base64
 import logging
-from fastapi import FastAPI, Depends, HTTPException, Request, status
+from bson import ObjectId
+from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from jose import JWTError, jwt
@@ -112,19 +113,11 @@ async def signup(request: Request):  # Use Request to manually access the reques
         logger.error(f"Error processing signup: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# @app.post("/token")
-# async def login(form_data: Request):
-#     logger.info(form_data.password)
-#     user = users_collection.find_one({"username": form_data.username})
-#     if not user or not verify_password(form_data.password, user['password']):
-#         raise HTTPException(status_code=400, detail="Invalid credentials")
-#     access_token = create_access_token(data={"sub": user["username"]}, expires_delta=timedelta(minutes=30))
-#     return {"access_token": access_token, "token_type": "bearer"}
 
 class LoginRequest(BaseModel):
     username: str
     password: str
-    
+
 @app.post("/token")
 async def login(form_data: LoginRequest):  # Use Pydantic model to parse the JSON body
     logger.info(f"Login attempt for user: {form_data.username}")
@@ -157,3 +150,62 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
         return {"username": username}
     except JWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+# Endpoint to upload and encrypt file
+@app.post("/upload-file")
+async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = File(...)):
+    # Decode the JWT to identify the user
+    payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    username = payload.get("sub")
+    
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid user")
+
+    user = users_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Read file content, encrypt, and store it in MongoDB as a binary blob
+    file_content = await file.read()
+    # Implement encryption here (e.g., AES encryption) before storing
+    encrypted_content = file_content  # Replace with encrypted content
+
+    file_data = {
+        "filename": file.filename,
+        "content": encrypted_content,
+        "uploaded_at": datetime.utcnow()
+    }
+    file_id = db['Files'].insert_one(file_data).inserted_id
+
+    # Update the user's document with the reference to the file
+    users_collection.update_one(
+        {"username": username},
+        {"$push": {"uploaded_files": file_id}}
+    )
+
+    return {"message": "File uploaded and encrypted successfully"}
+
+# Endpoint to retrieve user's files
+@app.get("/files")
+async def get_user_files(token: str = Depends(oauth2_scheme)):
+    payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+    username = payload.get("sub")
+    
+    user = users_collection.find_one({"username": username})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Fetch file metadata for the user's files
+    file_ids = user.get("uploaded_files", [])
+    files = db['Files'].find({"_id": {"$in": file_ids}})
+    return [{"filename": f["filename"], "id": str(f["_id"])} for f in files]
+
+# Endpoint to retrieve and decrypt a file
+@app.get("/files/{file_id}")
+async def download_file(file_id: str, token: str = Depends(oauth2_scheme)):
+    file = db['Files'].find_one({"_id": ObjectId(file_id)})
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Decrypt content here if needed
+    return {"filename": file["filename"], "content": base64.b64encode(file["content"]).decode("utf-8")}
