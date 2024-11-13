@@ -11,20 +11,56 @@ const SignupPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const canvasRef = useRef(null);
 
+  // const handleSignup = async () => {
+  //   if (canvasRef.current) {
+  //     const signatureDataUrl = canvasRef.current.toDataURL();
+  
+  //     // Prepare form data, including the signature image
+  //     const userData = {
+  //       name,
+  //       age,
+  //       password,
+  //       signature: signatureDataUrl,
+  //     };
+  //     console.log(signatureDataUrl);
+  
+  //     try {
+  //       const response = await axios.post('http://localhost:8000/signup', userData);  // POST request
+  //       if (response.status === 200) {
+  //         alert('Signup successful!');
+  //       }
+  //     } catch (error) {
+  //       console.error('Signup failed:', error.response ? error.response.data : error.message);
+  //       alert(error.response?.data?.detail || 'Signup failed. Please try again.');
+  //     }
+  //   } else {
+  //     alert("Signature canvas is not available.");
+  //   }
+  // };
+
   const handleSignup = async () => {
     if (canvasRef.current) {
+      // Convert canvas to Data URL (Base64 encoded)
       const signatureDataUrl = canvasRef.current.toDataURL();
   
-      // Prepare form data, including the signature image
+      // Prepare JSON payload with the Base64 signature and other user data
       const userData = {
-        name,
+        username: name,  // Assume `name` is the username field
         age,
         password,
-        signature: signatureDataUrl,
+        signature: signatureDataUrl,  // Send the image as a Base64 string
       };
+
+      console.log(userData);
   
       try {
-        const response = await axios.post('http://localhost:8000/signup', userData);  // POST request
+        // Send the JSON data as a POST request
+        const response = await axios.post('http://localhost:8000/signup', userData, {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+  
         if (response.status === 200) {
           alert('Signup successful!');
         }
