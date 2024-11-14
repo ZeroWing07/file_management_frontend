@@ -92,6 +92,25 @@ button:disabled {
 /* Canvas styling */
 canvas {
   border: 1px solid #888;
+  background-color: #ffffff;
+}
+
+.canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+}
+
+.signup-container h3 {
+  margin-bottom: 15px;
+}
+
+.signup-container .canvas-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
 }
 
 /* Spacing adjustments */
@@ -284,11 +303,6 @@ button:disabled {
   color: #64b5f6;
 }
 
-/* Canvas styling */
-canvas {
-  border: 1px solid #888;
-}
-
 /* Spacing adjustments */
 input,
 button {
@@ -383,4 +397,32 @@ button {
 
 .homepage a:active {
   transform: translateY(1px);
+}
+
+/* Add to App.css */
+
+.encryption-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.file-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.file-upload input[type="file"] {
+  margin-bottom: 15px;
+  border-radius: 5px;
+  background-color: #333;
+  color: #e0e0e0;
+  padding: 10px;
+}
+
+.file-upload button {
+  width: 100%;
 }

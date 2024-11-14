@@ -17,8 +17,8 @@ const App = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/dashboard" element={<UserDashboard />} />
         <Route path="/encrypt" element={<EncryptionPage />} />
-        <Route path="/files" element={<UploadedFilesPage />} />
-        <Route path="/decrypt" element={<DecryptorPage />} />
+        <Route path="/uploaded-files" element={<UploadedFilesPage />} />
+        <Route path="/decryptor/:fileId" element={<DecryptorPage />} />
       </Routes>
     </Router>
   );

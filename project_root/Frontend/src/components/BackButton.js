@@ -7,9 +7,8 @@ const BackButton = () => {
   const location = useLocation();
 
   const handleBack = () => {
-    // Check if the current location is the login page
     if (location.pathname === '/login') {
-      navigate('/'); // Navigate to the homepage if on the login page
+      navigate('/'); // Redirect to homepage if currently on the login page
     } else {
       navigate(-1); // Otherwise, go back to the previous page
     }

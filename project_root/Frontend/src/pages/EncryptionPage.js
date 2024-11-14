@@ -25,12 +25,13 @@ const EncryptionPage = () => {
     }
   };
   
-
   return (
     <div>
       <h2>Encrypt a File</h2>
-      <input type="file" onChange={handleFileChange} />
-      <button onClick={handleEncrypt}>Encrypt</button>
+      <div className="file-upload">
+        <input type="file" onChange={handleFileChange} />
+        <button onClick={handleEncrypt}>Encrypt</button>
+      </div>
       <BackButton />
     </div>
   );

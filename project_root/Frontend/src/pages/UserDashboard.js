@@ -8,7 +8,7 @@ const UserDashboard = () => {
 
   const handleLogout = () => {
     // Clear any user authentication tokens or data
-    localStorage.removeItem('authToken');
+    localStorage.removeItem('token'); // Adjusted to match the token key
     navigate('/login');
   };
 
