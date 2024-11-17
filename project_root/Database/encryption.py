@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import os
+import logging
 from tensorflow.keras.models import load_model, Model
 from tensorflow.keras.utils import register_keras_serializable
 from tensorflow.keras.layers import Lambda
@@ -34,45 +35,58 @@ cnn_model = load_model(MODEL_PATH)
 embedder = Model(inputs=cnn_model.get_layer("functional").input, 
                                  outputs=cnn_model.get_layer("functional").output)
 
+logger = logging.getLogger(__name__)
+
 
 
 def process_signature(image_binary, username):
-    """
-    Save the signature image locally, convert it into a numpy array, 
-    and generate a 128-bit embedding (without flattening).
-
-    Args:
-    - image_binary (bytes): Binary data of the signature image.
-    - username (str): Username of the user, used for naming the saved file.
-
-    Returns:
-    - embedding (np.ndarray): Feature embedding in its original form (without flattening).
-    """     
     try:
-        # Create a directory to store the signature if it doesn't exist
-        os.makedirs("signatures", exist_ok=True)
+        # Log the size of incoming binary data
+        logger.info(f"Received binary data size: {len(image_binary)} bytes")
+        
+        # Decode the binary image data
+        np_image = np.frombuffer(image_binary, np.uint8)
+        logger.info(f"Numpy array shape after frombuffer: {np_image.shape}")
+        
+        # Decode using cv2.IMREAD_COLOR to ensure RGB format
+        img = cv2.imdecode(np_image, cv2.IMREAD_COLOR)
+        
+        if img is None:
+            raise RuntimeError("Failed to decode image from binary data")
+            
+        logger.info(f"Decoded image shape: {img.shape}")
+        logger.info(f"Image dtype: {img.dtype}")
+        logger.info(f"Image min/max values: {np.min(img)}/{np.max(img)}")
 
-        # Save the binary data as an image file locally
-        file_path = os.path.join("signatures", f"{username}_signature.png")
-        with open(file_path, "wb") as file:
-            file.write(image_binary)
-
-        # Load the saved image using OpenCV
-        img = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)  # Read as grayscale
-
-        # Resize the image to the expected input size of the model
-        img = cv2.resize(img, (128, 128))
-
+        # Save the color image first for debugging
+        cv2.imwrite(f"signatures/{username}_color.png", img)
+        
+        # Convert to grayscale
+        img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        logger.info(f"Grayscale image shape: {img_gray.shape}")
+        
+        # Save the original grayscale image for verification
+        cv2.imwrite(f"signatures/{username}_original.png", img_gray)
+        
+        # Resize the image
+        img_resized = cv2.resize(img_gray, (128, 128))
+        logger.info(f"Resized image shape: {img_resized.shape}")
+        
+        # Save resized image for debugging
+        cv2.imwrite(f"signatures/{username}_resized.png", img_resized)
+        
         # Normalize pixel values and reshape for the CNN
-        img_array = img / 255.0  # Normalize to range [0, 1]
+        img_array = img_resized / 255.0
         img_array = np.expand_dims(img_array, axis=(0, -1))
-
-        # Get the embedding from the model (without flattening)
+        logger.info(f"Final array shape for model: {img_array.shape}")
+        
+        # Get the embedding
         embedding = embedder.predict(img_array)
-
-        return embedding  # Return the embedding in its original form
+        
+        return embedding
 
     except Exception as e:
+        logger.error(f"Error in process_signature: {str(e)}")
         raise RuntimeError(f"Error processing signature image: {e}")
     
 def compare_signature(backend_embedding, decryption_embedding):

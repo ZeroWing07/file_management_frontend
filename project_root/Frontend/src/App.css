@@ -106,12 +106,12 @@ canvas {
   margin-bottom: 15px;
 }
 
-.signup-container .canvas-container {
+/* .signup-container .canvas-container {
   display: flex;
   justify-content: center;
   align-items: center;
   margin: 20px 0;
-}
+} */
 
 /* Spacing adjustments */
 input,

@@ -37,6 +37,22 @@ const DecryptorPage = () => {
 
       const signature = canvas.toDataURL("image/png");
 
+      // Convert Base64 to a Blob
+      const byteString = atob(signature.split(',')[1]); // Decode Base64
+      const mimeString = signature.split(',')[0].split(':')[1].split(';')[0]; // Get MIME type
+      const arrayBuffer = new ArrayBuffer(byteString.length);
+      const uintArray = new Uint8Array(arrayBuffer);
+
+      for (let i = 0; i < byteString.length; i++) {
+        uintArray[i] = byteString.charCodeAt(i);
+      }
+
+      const blob = new Blob([uintArray], { type: mimeString });
+
+      // Create a URL for the Blob and open it in a new tab
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+
       // Call the decrypt endpoint using Axios
       const response = await axios.post(
         "http://localhost:8000/decrypt",
