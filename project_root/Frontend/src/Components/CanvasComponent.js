@@ -7,10 +7,18 @@ const CanvasComponent = React.forwardRef((props, ref) => {
 
   useEffect(() => {
     if (canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext('2d');
+
+      // Set up canvas properties
       ctx.lineWidth = 2;
       ctx.lineCap = 'round';
-      ctx.strokeStyle = '#ffffff';
+      ctx.strokeStyle = '#000000';
+
+      // Fill the canvas with a white background
+      ctx.fillStyle = '#FFFFFF'; // White color
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
       setContext(ctx);
     }
   }, []);
@@ -61,7 +69,7 @@ const CanvasComponent = React.forwardRef((props, ref) => {
       onMouseMove={draw}
       onMouseUp={stopDrawing}
       onMouseLeave={stopDrawing}
-      style={{ border: '1px solid #888', backgroundColor: '#2b2b2b' }}
+      style={{ border: '1px solid #888', backgroundColor: '#ffffff' }}
     />
   );
 });

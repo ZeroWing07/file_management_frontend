@@ -15,6 +15,10 @@ from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import numpy as np
+
+from encryption import process_signature, compare_signature
+
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -45,6 +49,8 @@ JWT_SECRET = os.getenv("JWT_SECRET", "8417bc78ad9f51e44f33c7cb681c5ad116662d3825
 client = MongoClient(MONGO_URI)
 db = client['MFAFileStorage']
 users_collection = db['Users']
+metadata_collection = db["FileMetadata"]
+files_collection = db["Files"]
 
 # FastAPI and Security setup
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -69,14 +75,18 @@ def verify_password(plain_password, hashed_password):
 def get_password_hash(password):
     return pwd_context.hash(password)
 
+@app.get("/")
+async def root(request: Request):
+    return "Hello"
+
 @app.post("/signup")
-async def signup(request: Request):  # Use Request to manually access the request body
+async def signup(request: Request):
     try:
         # Parse the JSON body manually
         user = await request.json()
 
         # Log the incoming user data for debugging
-        # logger.info(f"Received signup request with data: {user}")
+        logger.info(f"Received signup request with data: {user}")
 
         # Access variables manually from the parsed JSON
         username = user.get("username")
@@ -88,21 +98,26 @@ async def signup(request: Request):  # Use Request to manually access the reques
         if users_collection.find_one({"username": username}):
             raise HTTPException(status_code=400, detail="Username already registered")
         
-        # Decode the Base64 signature back to binary data (optional, for storage)
+        # Decode the Base64 signature directly into binary data
         try:
             if signature:
                 signature_binary = base64.b64decode(signature.split(",")[1])
             else:
-                signature_binary = None
+                raise HTTPException(status_code=400, detail="Signature is missing")
         except Exception as e:
             logger.error(f"Error decoding signature: {e}")
             raise HTTPException(status_code=400, detail="Invalid image data")
+
+        # Process the binary data to generate the embedding
+        embedding = process_signature(signature_binary,username)
+
+        print(embedding.size, embedding)
 
         user_data = {
             "username": username,
             "password": get_password_hash(password),
             "age": age,
-            "signature": signature_binary  # Store binary data in MongoDB
+            "embedding": embedding.tolist(),  # Convert numpy array to list for JSON storage
         }
 
         users_collection.insert_one(user_data)
@@ -155,9 +170,14 @@ async def read_users_me(token: str = Depends(oauth2_scheme)):
 @app.post("/upload-file")
 async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = File(...)):
     # Decode the JWT to identify the user
-    payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    username = payload.get("sub")
-    
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        username = payload.get("sub")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     if not username:
         raise HTTPException(status_code=401, detail="Invalid user")
 
@@ -165,47 +185,115 @@ async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = Fi
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Read file content, encrypt, and store it in MongoDB as a binary blob
+    # Read file content
     file_content = await file.read()
-    # Implement encryption here (e.g., AES encryption) before storing
-    encrypted_content = file_content  # Replace with encrypted content
+    
+    # Encrypt the file content (replace with your encryption logic)
+    encrypted_content = file_content  # Replace this with the actual encryption logic
 
-    file_data = {
-        "filename": file.filename,
-        "content": encrypted_content,
-        "uploaded_at": datetime.utcnow()
+    # Store the file content as a binary blob in the Files collection
+    file_blob = {
+        "content": encrypted_content
     }
-    file_id = db['Files'].insert_one(file_data).inserted_id
+    file_blob_id = files_collection.insert_one(file_blob).inserted_id
 
-    # Update the user's document with the reference to the file
+    # Store metadata in the FileMetadata collection
+    file_metadata = {
+        "filename": file.filename,
+        "file_blob_id": file_blob_id,  # Reference to the blob's ID
+        "uploaded_by": username,
+        "uploaded_at": datetime.utcnow(),
+        "size": len(file_content),  # File size
+        "content_type": file.content_type  # MIME type
+    }
+    file_metadata_id = metadata_collection.insert_one(file_metadata).inserted_id
+
+    # Update the user's document with the reference to the metadata document
     users_collection.update_one(
         {"username": username},
-        {"$push": {"uploaded_files": file_id}}
+        {"$push": {"uploaded_files": file_metadata_id}}
     )
 
-    return {"message": "File uploaded and encrypted successfully"}
+    return {"message": "File uploaded and encrypted successfully", "file_metadata_id": str(file_metadata_id)}
 
 # Endpoint to retrieve user's files
 @app.get("/files")
 async def get_user_files(token: str = Depends(oauth2_scheme)):
-    payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
-    username = payload.get("sub")
-    
+    try:
+        payload = jwt.decode(token, JWT_SECRET, algorithms=["HS256"])
+        username = payload.get("sub")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.InvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
     user = users_collection.find_one({"username": username})
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Fetch file metadata for the user's files
-    file_ids = user.get("uploaded_files", [])
-    files = db['Files'].find({"_id": {"$in": file_ids}})
-    return [{"filename": f["filename"], "id": str(f["_id"])} for f in files]
+    # Fetch file metadata references from the user's document
+    file_metadata_ids = user.get("uploaded_files", [])
+    metadata_cursor = metadata_collection.find({"_id": {"$in": file_metadata_ids}})
+    
+    # Return a list of metadata entries
+    files = [
+        {
+            "id": str(metadata["_id"]),
+            "filename": metadata["filename"],
+            "uploaded_at": metadata["uploaded_at"],
+            "size": metadata.get("size"),
+            "content_type": metadata.get("content_type"),
+        }
+        for metadata in metadata_cursor
+    ]
+
+    return files
 
 # Endpoint to retrieve and decrypt a file
-@app.get("/files/{file_id}")
-async def download_file(file_id: str, token: str = Depends(oauth2_scheme)):
-    file = db['Files'].find_one({"_id": ObjectId(file_id)})
-    if not file:
-        raise HTTPException(status_code=404, detail="File not found")
-    
-    # Decrypt content here if needed
-    return {"filename": file["filename"], "content": base64.b64encode(file["content"]).decode("utf-8")}
+@app.post("/decrypt")
+async def decrypt(request: Request):
+    try:
+        # Parse the JSON body manually
+        data = await request.json()
+
+        # Log the incoming data for debugging
+        logger.info(f"Received decryption request with data: {data}")
+
+        # Access variables manually from the parsed JSON
+        username = data.get("username")
+        signature = data.get("signature")
+
+        # Check if the user exists
+        user = users_collection.find_one({"username": username})
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Decode the Base64 signature directly into binary data
+        try:
+            if signature:
+                signature_binary = base64.b64decode(signature.split(",")[1])
+            else:
+                raise HTTPException(status_code=400, detail="Signature is missing")
+        except Exception as e:
+            logger.error(f"Error decoding signature: {e}")
+            raise HTTPException(status_code=400, detail="Invalid image data")
+
+        # Process the binary data to generate the decryption embedding
+        decryption_embedding = process_signature(signature_binary, username)
+
+        # Retrieve the saved embedding from the user document
+        saved_embedding = np.array(user["embedding"])
+
+        # Compare both embeddings
+        similarity = compare_signature(decryption_embedding, saved_embedding)
+        similarity = similarity.tolist()[0][0]
+
+        # Optionally, set a threshold for the similarity to decide if it's a match
+        if similarity > 0.8:  # You can adjust this threshold
+            return {"message": "Signature verified successfully"}
+        else:
+            raise HTTPException(status_code=400, detail="Signature does not match which is" + str(similarity))
+
+    except Exception as e:
+        logger.error(f"Error processing decryption request: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")

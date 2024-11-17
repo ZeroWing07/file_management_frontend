@@ -11,38 +11,63 @@ const DecryptorPage = () => {
   const [enteredPassword, setEnteredPassword] = useState('');
   const canvasRef = useRef(null);
 
-  useEffect(() => {
-    axios.get(`http://localhost:8000/files/${fileId}`, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem('token')}`,
-      },
-    })
-    .then(response => setFileContent(response.data.content))
-    .catch(error => console.error("Error fetching file:", error));
-  }, [fileId]);
-
-  const handleDecrypt = () => {
-    const savedPassword = localStorage.getItem('password')?.trim();
-    
-    if (!savedPassword) {
-        alert("No password set. Please login first.");
+  const handleDecrypt = async () => {
+    try {
+      // Get the token from localStorage
+      const token = localStorage.getItem("token");
+      if (!token) {
+        alert("Token not found. Please login first.");
         return;
-    }
+      }
 
-    const trimmedEnteredPassword = enteredPassword.trim();
-
-    console.log("Entered Password:", trimmedEnteredPassword);
-    console.log("Saved Password from localStorage:", savedPassword);
-
-    if (trimmedEnteredPassword !== savedPassword) {
-        alert("Password mismatch. Please enter the correct password.");
+      // Decode the token to extract the username
+      const decodedToken = JSON.parse(atob(token.split(".")[1]));
+      const username = decodedToken?.sub; // Assuming 'sub' contains the username
+      if (!username) {
+        alert("Username not found in token. Please login again.");
         return;
-    }
+      }
 
-    // Proceed with decryption if password matches
-    console.log("Password matched! Proceeding with decryption...");
-    // Your decryption logic here
-};
+      // Get the signature from the canvas
+      const canvas = canvasRef.current;
+      if (!canvas) {
+        alert("Signature canvas not found. Please sign again.");
+        return;
+      }
+
+      const signature = canvas.toDataURL("image/png");
+
+      // Call the decrypt endpoint using Axios
+      const response = await axios.post(
+        "http://localhost:8000/decrypt",
+        {
+          username: username,
+          signature: signature,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Handle the response
+      console.log("Decryption successful:", response.data);
+      alert("Decryption successful! File is being processed.");
+      // Add logic to handle the decrypted file here
+    } catch (error) {
+      if (error.response) {
+        // Server responded with a status other than 2xx
+        alert(`Decryption failed: ${error.response.data.detail}`);
+        console.error("Decryption error response:", error.response.data);
+      } else {
+        // Other errors
+        console.error("Error during decryption:", error);
+        alert("An error occurred during decryption. Please try again.");
+      }
+    }
+  };
+
 
   // Call the clearCanvas method on the canvasRef
   const handleClearCanvas = () => {
