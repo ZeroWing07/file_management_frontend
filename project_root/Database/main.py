@@ -5,6 +5,8 @@ import struct
 from bson import ObjectId
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from pydantic import BaseModel
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -25,7 +27,7 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 import numpy as np
 import uuid
 
-from encryption import process_signature, compare_signature, encrypt_key, encrypt_content
+from encryption import process_signature, compare_signature, encrypt_key, encrypt_content, decrypt_content ,decrypt_key
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -281,52 +283,72 @@ async def get_user_files(token: str = Depends(oauth2_scheme)):
 
     return files
 
-# Endpoint to retrieve and decrypt a file
-@app.post("/decrypt")
-async def decrypt(request: Request):
+# Add this endpoint to main.py
+@app.post("/decrypt-file/{file_id}")
+async def decrypt_file(
+    file_id: str,
+    request: Request
+):
     try:
-        # Parse the JSON body manually
+        # Parse the request body
         data = await request.json()
-
-        # Log the incoming data for debugging
-        logger.info(f"Received decryption request with data: {data}")
-
-        # Access variables manually from the parsed JSON
         username = data.get("username")
         signature = data.get("signature")
 
-        # Check if the user exists
+        # Validate user exists
         user = users_collection.find_one({"username": username})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Decode the Base64 signature directly into binary data
+        # Convert file_id string to ObjectId
         try:
-            if signature:
-                signature_binary = base64.b64decode(signature.split(",")[1])
-            else:
-                raise HTTPException(status_code=400, detail="Signature is missing")
-        except Exception as e:
-            logger.error(f"Error decoding signature: {e}")
-            raise HTTPException(status_code=400, detail="Invalid image data")
+            file_metadata_id = ObjectId(file_id)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid file ID")
 
-        # Process the binary data to generate the decryption embedding
+        # Get file metadata
+        file_metadata = metadata_collection.find_one({"_id": file_metadata_id})
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Verify file ownership
+        if file_metadata["uploaded_by"] != username:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Process and verify signature
+        signature_binary = base64.b64decode(signature.split(",")[1])
         decryption_embedding = process_signature(signature_binary, username)
-
-        # Retrieve the saved embedding from the user document
         saved_embedding = np.array(user["embedding"])
-
-        # Compare both embeddings
         similarity = compare_signature(decryption_embedding, saved_embedding)
-        logger.warning("same" if (decryption_embedding==saved_embedding).all() else "notsame")
         similarity = similarity.tolist()[0][0]
 
-        # Optionally, set a threshold for the similarity to decide if it's a match
-        if similarity > 0.8:  # You can adjust this threshold
-            return {"message": "Signature verified successfully with similarity "+str(similarity)}
-        else:
-            raise HTTPException(status_code=400, detail="Signature does not match which is" + str(similarity))
+        if similarity <= 0.85:
+            raise HTTPException(status_code=400, detail=f"Signature verification failed with similarity {similarity}")
+
+        # Get the encrypted file content
+        file_blob = files_collection.find_one({"_id": file_metadata["file_blob_id"]})
+        if not file_blob:
+            raise HTTPException(status_code=404, detail="File content not found")
+
+        # Get and decrypt the file key
+        encrypted_key = base64.b64decode(file_metadata["encrypted_key"])
+        decrypted_key = decrypt_key(encrypted_key, KEY_ENCRYPTION_SECRET.encode())
+
+        # Decrypt the file content
+        decrypted_content = decrypt_content(decrypted_key, file_blob["content"])
+
+        # Create a BytesIO object for streaming
+        file_stream = BytesIO(decrypted_content)
+
+        # Return the decrypted file as a streaming response
+        return StreamingResponse(
+            file_stream,
+            media_type=file_metadata["content_type"],
+            headers={
+                "Content-Disposition": f'attachment; filename="{file_metadata["filename"]}"'
+            }
+        )
 
     except Exception as e:
-        logger.error(f"Error processing decryption request: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in decrypt_file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Decryption error: {str(e)}")

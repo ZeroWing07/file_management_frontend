@@ -158,3 +158,42 @@ def encrypt_key(key: bytes, secret: bytes) -> bytes:
     encrypted_key = encryptor.update(padded_key) + encryptor.finalize()
     return encrypted_key
      
+# Add these decryption functions to encryption.py
+def decrypt_key(encrypted_key: bytes, secret: bytes) -> bytes:
+    # Use HKDF for key derivation - same as encryption
+    derived_key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=None,
+        info=b"key-encryption",
+        backend=default_backend()
+    ).derive(secret)
+    
+    # Decrypt the key using the derived key
+    cipher = Cipher(algorithms.AES(derived_key), modes.ECB(), backend=default_backend())
+    decryptor = cipher.decryptor()
+    
+    # Decrypt and unpad
+    decrypted_padded = decryptor.update(encrypted_key) + decryptor.finalize()
+    unpadder = PKCS7(algorithms.AES.block_size).unpadder()
+    decrypted_key = unpadder.update(decrypted_padded) + unpadder.finalize()
+    
+    return decrypted_key
+
+def decrypt_content(key: bytes, encrypted_data: bytes) -> bytes:
+    # Extract IV (first 16 bytes) and ciphertext
+    iv = encrypted_data[:16]
+    ciphertext = encrypted_data[16:]
+    
+    # Create AES cipher
+    cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=default_backend())
+    decryptor = cipher.decryptor()
+    
+    # Decrypt the data
+    decrypted_padded = decryptor.update(ciphertext) + decryptor.finalize()
+    
+    # Remove padding
+    unpadder = PKCS7(algorithms.AES.block_size).unpadder()
+    decrypted_data = unpadder.update(decrypted_padded) + unpadder.finalize()
+    
+    return decrypted_data
