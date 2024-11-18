@@ -1,9 +1,12 @@
 # main.py
 import base64
 import logging
+import struct
 from bson import ObjectId
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, File, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.responses import StreamingResponse
+from io import BytesIO
 from pydantic import BaseModel
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -14,10 +17,17 @@ import os
 from datetime import datetime, timedelta
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.padding import PKCS7
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 import numpy as np
+import uuid
 
-from encryption import process_signature, compare_signature
+from encryption import process_signature, compare_signature, encrypt_key, encrypt_content, decrypt_content ,decrypt_key
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -44,6 +54,7 @@ class User(BaseModel):
 load_dotenv()
 MONGO_URI = "mongodb+srv://amogus:sussyimposter@clustermfa.h4u5v.mongodb.net/MFAFileStorage?retryWrites=true&w=majority&appName=ClusterMFA"
 JWT_SECRET = os.getenv("JWT_SECRET", "8417bc78ad9f51e44f33c7cb681c5ad116662d382540710b080d39493c0247316d007ad817979f46f8e1b5b1532e47cef2fb1b3ab2a9b379b2165db80c4e6b4a4ab2c66d6d3dd8f26d51233fa12766e60065f96028b9cb4c0da729c0cc155757b08a28db39b21f3ae30285dd4fcc5efa6e7324baacc2f3682973457d9401027d05b904e019149c95caf2832eeb250af8d374729e98e43c3b1ef046f0ecbd3ed2a6f92a3a97e0ba6b6f8a98dcd7834b92d4828ed96be8f287d53731f5d003b135036a9de500a976971ac1c6fb7ec9d8e85f1d846929e80d0f8a2de31c7442696aad99e21e542296d0fa1c594aba45600ff6c27ff5b0a8ff004c08b4ad2f91b0a4")
+KEY_ENCRYPTION_SECRET = os.getenv("KEY_ENCRYPTION_SECRET")
 
 # MongoDB setup
 client = MongoClient(MONGO_URI)
@@ -86,7 +97,7 @@ async def signup(request: Request):
         user = await request.json()
 
         # Log the incoming user data for debugging
-        logger.info(f"Received signup request with data: {user}")
+        #logger.info(f"Received signup request with data: {user}")
 
         # Access variables manually from the parsed JSON
         username = user.get("username")
@@ -110,8 +121,6 @@ async def signup(request: Request):
 
         # Process the binary data to generate the embedding
         embedding = process_signature(signature_binary,username)
-
-        print(embedding.size, embedding)
 
         user_data = {
             "username": username,
@@ -187,11 +196,35 @@ async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = Fi
 
     # Read file content
     file_content = await file.read()
-    
-    # Encrypt the file content (replace with your encryption logic)
-    encrypted_content = file_content  # Replace this with the actual encryption logic
 
-    # Store the file content as a binary blob in the Files collection
+    # Retrieve user's embedding from the database
+    embedding = user.get("embedding")
+    if not embedding:
+        raise HTTPException(status_code=400, detail="User embedding not found")
+
+    # Generate the file ID
+    file_id = str(uuid.uuid4())
+
+    # Pack the embedding list into bytes
+    embedding_bytes = struct.pack(f"{len(embedding[0])}f", *(embedding[0]))
+
+    # Generate the AES key by combining the embedding and file ID
+    combined_key_material = embedding_bytes + file_id.encode()
+    derived_key = HKDF(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=None,
+        info=b"file-encryption",
+        backend=default_backend()
+    ).derive(combined_key_material)
+
+    # Encrypt the file content
+    encrypted_content = encrypt_content(derived_key, file_content)
+
+    # Encrypt the key using the secret from .env
+    encrypted_key = encrypt_key(derived_key, KEY_ENCRYPTION_SECRET.encode())
+
+    # Store the encrypted file content as a binary blob in the Files collection
     file_blob = {
         "content": encrypted_content
     }
@@ -204,7 +237,8 @@ async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = Fi
         "uploaded_by": username,
         "uploaded_at": datetime.utcnow(),
         "size": len(file_content),  # File size
-        "content_type": file.content_type  # MIME type
+        "content_type": file.content_type,  # MIME type
+        "encrypted_key": base64.b64encode(encrypted_key).decode()  # Store the encrypted key as Base64
     }
     file_metadata_id = metadata_collection.insert_one(file_metadata).inserted_id
 
@@ -249,51 +283,72 @@ async def get_user_files(token: str = Depends(oauth2_scheme)):
 
     return files
 
-# Endpoint to retrieve and decrypt a file
-@app.post("/decrypt")
-async def decrypt(request: Request):
+# Add this endpoint to main.py
+@app.post("/decrypt-file/{file_id}")
+async def decrypt_file(
+    file_id: str,
+    request: Request
+):
     try:
-        # Parse the JSON body manually
+        # Parse the request body
         data = await request.json()
-
-        # Log the incoming data for debugging
-        logger.info(f"Received decryption request with data: {data}")
-
-        # Access variables manually from the parsed JSON
         username = data.get("username")
         signature = data.get("signature")
 
-        # Check if the user exists
+        # Validate user exists
         user = users_collection.find_one({"username": username})
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
 
-        # Decode the Base64 signature directly into binary data
+        # Convert file_id string to ObjectId
         try:
-            if signature:
-                signature_binary = base64.b64decode(signature.split(",")[1])
-            else:
-                raise HTTPException(status_code=400, detail="Signature is missing")
-        except Exception as e:
-            logger.error(f"Error decoding signature: {e}")
-            raise HTTPException(status_code=400, detail="Invalid image data")
+            file_metadata_id = ObjectId(file_id)
+        except:
+            raise HTTPException(status_code=400, detail="Invalid file ID")
 
-        # Process the binary data to generate the decryption embedding
+        # Get file metadata
+        file_metadata = metadata_collection.find_one({"_id": file_metadata_id})
+        if not file_metadata:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Verify file ownership
+        if file_metadata["uploaded_by"] != username:
+            raise HTTPException(status_code=403, detail="Access denied")
+
+        # Process and verify signature
+        signature_binary = base64.b64decode(signature.split(",")[1])
         decryption_embedding = process_signature(signature_binary, username)
-
-        # Retrieve the saved embedding from the user document
         saved_embedding = np.array(user["embedding"])
-
-        # Compare both embeddings
         similarity = compare_signature(decryption_embedding, saved_embedding)
         similarity = similarity.tolist()[0][0]
 
-        # Optionally, set a threshold for the similarity to decide if it's a match
-        if similarity > 0.8:  # You can adjust this threshold
-            return {"message": "Signature verified successfully"}
-        else:
-            raise HTTPException(status_code=400, detail="Signature does not match which is" + str(similarity))
+        if similarity <= 0.85:
+            raise HTTPException(status_code=400, detail=f"Signature verification failed with similarity {similarity}")
+
+        # Get the encrypted file content
+        file_blob = files_collection.find_one({"_id": file_metadata["file_blob_id"]})
+        if not file_blob:
+            raise HTTPException(status_code=404, detail="File content not found")
+
+        # Get and decrypt the file key
+        encrypted_key = base64.b64decode(file_metadata["encrypted_key"])
+        decrypted_key = decrypt_key(encrypted_key, KEY_ENCRYPTION_SECRET.encode())
+
+        # Decrypt the file content
+        decrypted_content = decrypt_content(decrypted_key, file_blob["content"])
+
+        # Create a BytesIO object for streaming
+        file_stream = BytesIO(decrypted_content)
+
+        # Return the decrypted file as a streaming response
+        return StreamingResponse(
+            file_stream,
+            media_type=file_metadata["content_type"],
+            headers={
+                "Content-Disposition": f'attachment; filename="{file_metadata["filename"]}"'
+            }
+        )
 
     except Exception as e:
-        logger.error(f"Error processing decryption request: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logger.error(f"Error in decrypt_file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Decryption error: {str(e)}")

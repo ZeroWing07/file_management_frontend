@@ -14,7 +14,8 @@ const SignupPage = () => {
   const handleSignup = async () => {
     if (canvasRef.current) {
       // Convert canvas to Data URL (Base64 encoded)
-      const signatureDataUrl = canvasRef.current.toDataURL();
+   
+      const signatureDataUrl = canvasRef.current.toDataURL('image/png');
 
       // Convert Base64 to a Blob
       const byteString = atob(signatureDataUrl.split(',')[1]); // Decode Base64
