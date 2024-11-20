@@ -426,3 +426,7 @@ button {
 .file-upload button {
   width: 100%;
 }
+
+.hidden {
+  display: "none";
+}

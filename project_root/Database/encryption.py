@@ -38,7 +38,6 @@ embedder = Model(inputs=cnn_model.get_layer("functional").input,
 logger = logging.getLogger(__name__)
 
 
-
 def process_signature(image_binary, username):
     try:
         # Log the size of incoming binary data

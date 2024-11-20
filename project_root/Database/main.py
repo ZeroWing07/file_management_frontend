@@ -221,6 +221,18 @@ async def upload_file(token: str = Depends(oauth2_scheme), file: UploadFile = Fi
     # Encrypt the file content
     encrypted_content = encrypt_content(derived_key, file_content)
 
+    # Save the encrypted file locally
+    save_directory = "encrypted_files"  # Directory for saving encrypted files locally
+    os.makedirs(save_directory, exist_ok=True)  # Ensure the directory exists
+    local_file_path = os.path.join(save_directory, f"{file_id}_{file.filename}.enc")
+
+    try:
+        with open(local_file_path, "wb") as encrypted_file:
+            encrypted_file.write(encrypted_content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to save file locally: {str(e)}")
+
+
     # Encrypt the key using the secret from .env
     encrypted_key = encrypt_key(derived_key, KEY_ENCRYPTION_SECRET.encode())
 
@@ -322,7 +334,7 @@ async def decrypt_file(
         similarity = compare_signature(decryption_embedding, saved_embedding)
         similarity = similarity.tolist()[0][0]
 
-        if similarity <= 0.85:
+        if similarity <= 0.80:
             raise HTTPException(status_code=400, detail=f"Signature verification failed with similarity {similarity}")
 
         # Get the encrypted file content

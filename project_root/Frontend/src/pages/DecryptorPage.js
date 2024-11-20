@@ -10,7 +10,9 @@ const DecryptorPage = () => {
   const [isDecrypting, setIsDecrypting] = useState(false);
   const [decryptedFile, setDecryptedFile] = useState(null);
   const [error, setError] = useState(null);
+  const [uploadedSignature, setUploadedSignature] = useState(null);
   const canvasRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   const handleDecrypt = async () => {
     try {
@@ -30,13 +32,17 @@ const DecryptorPage = () => {
         throw new Error("Username not found in token. Please login again.");
       }
 
-      // Get the signature from the canvas
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        throw new Error("Signature canvas not found. Please sign again.");
+      // Determine signature source
+      let signature;
+      if (uploadedSignature) {
+        signature = uploadedSignature;
+      } else {
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          throw new Error("Signature canvas not found. Please sign again.");
+        }
+        signature = canvas.toDataURL("image/png");
       }
-
-      const signature = canvas.toDataURL("image/png");
 
       // Call the decrypt-file endpoint using Axios
       const response = await axios.post(
@@ -49,7 +55,7 @@ const DecryptorPage = () => {
           headers: {
             Authorization: `Bearer ${token}`,
           },
-          responseType: 'blob', // Important: tells axios to handle the response as a blob
+          responseType: 'blob',
         }
       );
 
@@ -93,7 +99,6 @@ const DecryptorPage = () => {
     }
   };
 
-  // Helper function to extract filename from Content-Disposition header
   const getFilenameFromHeader = (contentDisposition) => {
     if (!contentDisposition) return null;
     const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
@@ -114,7 +119,6 @@ const DecryptorPage = () => {
     }
   };
 
-  // Clean up the blob URL when component unmounts
   React.useEffect(() => {
     return () => {
       if (decryptedFile && decryptedFile.blob) {
@@ -125,6 +129,22 @@ const DecryptorPage = () => {
 
   const handleClearCanvas = () => {
     canvasRef.current.clearCanvas();
+    setUploadedSignature(null);
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedSignature(e.target.result);
+       
+        if (canvasRef.current) {
+          canvasRef.current.clearCanvas();
+        }
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   return (
@@ -140,7 +160,30 @@ const DecryptorPage = () => {
           >
             Clear Signature
           </button>
+          <input
+            type="file"
+            ref={fileInputRef}
+            style={{display:"none"}}
+            onChange={handleFileUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current.click()}
+            className="px-4 py-2 bg-blue-200 rounded hover:bg-blue-300"
+          >
+            Upload Signature
+          </button>
         </div>
+        {uploadedSignature && (
+          <div className="mt-2">
+            <img 
+              src={uploadedSignature} 
+              alt="Uploaded Signature" 
+              className="max-w-full h-auto max-h-[300px]" 
+            />
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
